@@ -64,9 +64,4 @@ if __name__ == "__main__":
     print("Length Valid Data: %d" % (len(valid_data)))
     print("Length Test Data: %d" % (len(test_data)))
 
-    train_loader = DataLoader(train_data, batch_size=len(train_data), shuffle=True) 
-    valid_loader = DataLoader(valid_data, batch_size=1, shuffle=False)
-    test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
-
-    for a in test_loader:
-        print(a)
+    data = data.make_graph_dataset(args)

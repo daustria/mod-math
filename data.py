@@ -1,6 +1,9 @@
+import numpy as np
+import torch
 from torch.utils.data.dataset import Dataset
 from torch.utils.data import DataLoader
-import numpy as np
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader
 
 def write_in_base(x, int_len, base):
     """
@@ -25,9 +28,10 @@ class ModularMult(object):
 
     def get_sample(self, x):
         y = (x * self.params.s) % self.p
-        x_ = write_in_base([x], self.int_len, self.base)
-        y_ = write_in_base([y], self.int_len, self.base)
-        return x_, y_
+        # x_ = write_in_base([x], self.int_len, self.base)
+        # y_ = write_in_base([y], self.int_len, self.base)
+        # return x_, y_
+        return x, y
 
     def gen_train_x(self):
         return self.rng.randint(self.p)
@@ -80,3 +84,41 @@ def create_datasets(params, max_train_size=1000):
     train_dataset = TrainSet(gen, max_train_size)
     test_dataset = TestSet(gen)
     return train_dataset, test_dataset
+
+def make_graph_dataset(params, max_train_size = 1000):
+    gen = ModularMult(params)
+    test_set = set(gen.test_data)
+
+
+    edge_index = []
+    train = []
+    test = []
+
+    for j in range(max_train_size):
+        x = gen.gen_train_x()
+
+        x,y = gen.get_sample(x)
+
+        edge_index.append([x,y])
+
+        if x == 0:
+            continue
+
+        edge_index.append([y,x])
+
+    print(edge_index)
+    edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
+    x = torch.tensor([[i] for i in range(params.p)], dtype=torch.long)
+
+    data = Data(x=x, edge_index=edge_index, edge_label_index=edge_index)
+    data.validate(raise_on_error=True) 
+
+def generate_negative_sample(params):
+    gen = ModularMult(params)
+    a = gen.gen_train_x()
+    b = gen.gen_train_x
+
+    while (b * params.p) % p == a:
+        b = gen.gen_train_x
+
+    return torch.tensor([[a,b], [b,a]], dtype=torch.long)
