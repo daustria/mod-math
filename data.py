@@ -31,6 +31,7 @@ class ModularMult(object):
         # x_ = write_in_base([x], self.int_len, self.base)
         # y_ = write_in_base([y], self.int_len, self.base)
         # return x_, y_
+
         return x, y
 
     def gen_train_x(self):
