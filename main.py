@@ -4,8 +4,7 @@ import torch
 import data
 import math
 
-from torch.utils.data import DataLoader
-from torch.autograd import Variable
+from gnn import LinkPred
 
 def get_parser():
     """
@@ -52,16 +51,13 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     args.int_len = np.ceil(math.log(args.p, args.base)).astype(int)
 
-    full_train_data, test_data = data.create_datasets(args)
-
-    train_size = int(0.8*len(full_train_data))
-    valid_size = len(full_train_data) - train_size
-    train_data, valid_data = torch.utils.data.random_split(full_train_data, [train_size, valid_size])
-
     print("Prime Modulus: %d" % (args.p))
     print("Secret s: %d" % (args.s))
-    print("Length Training Data: %d" % (len(train_data)))
-    print("Length Valid Data: %d" % (len(valid_data)))
-    print("Length Test Data: %d" % (len(test_data)))
+    # print("Length Training Data: %d" % (len(train_data)))
+    # print("Length Valid Data: %d" % (len(valid_data)))
+    # print("Length Test Data: %d" % (len(test_data)))
+
+    # Neeed to make the dataset aned then pass it into the GNN module
 
     data = data.make_graph_dataset(args)
+    lp = LinkPred(args, data)

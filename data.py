@@ -5,18 +5,6 @@ from torch.utils.data import DataLoader
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
 
-def write_in_base(x, int_len, base):
-    """
-    Writes x, an iterable of integer(s), in base. Pads the most significant bits with zeros. 
-    E.g., if base = 8, p = 251, for x = array([10]) it would return array([0, 1, 2]).
-    """
-    results = []
-    for x0 in x:
-        result = np.ones(int_len) * x0
-        result = (result // base ** np.arange(int_len)) % base
-        results.append(result.astype(int)[::-1])
-    return np.concatenate(results)
-
 class ModularMult(object):
     def __init__(self, params):
         super().__init__()
@@ -37,66 +25,25 @@ class ModularMult(object):
     def gen_train_x(self):
         return self.rng.randint(self.p)
 
-class TrainSet(Dataset):
-    def __init__(self, generator, max_train_size=1000):
-        super().__init__()
-        self.generator = generator
-        self.params = generator.params
-        self.test_set = set(generator.test_data)
-        self.max_train_size = max_train_size
-
-    def __len__(self):
-        return min(self.params.p - self.params.test_size, self.max_train_size)
-
-    def __getitem__(self, index):
-        while True:
-            x = self.generator.gen_train_x()
-            if x in self.test_set:
-                continue
-            sample_x, sample_y = self.generator.get_sample(x)
-            padded_sample_y = np.insert(sample_y,0, self.params.start_token)
-            return sample_x, padded_sample_y
-
-class TestSet(Dataset):
-    def __init__(self, generator):
-        super().__init__()
-        self.generator = generator
-        self.params = generator.params
-        self.test_data = generator.test_data
-
-    def __len__(self):
-        return self.params.test_size
-
-    def __getitem__(self, index):
-        x = self.test_data[self.generator.rng.randint(self.params.test_size)]
-        sample_x, sample_y = self.generator.get_sample(x)
-        padded_sample_y = np.insert(sample_y,0, self.params.start_token)
-        return sample_x, padded_sample_y
-
-def create_datasets(params, max_train_size=1000):
-    gen_obj = {
-            'modularmult': ModularMult
-            # 'modularmult2': ModularMult2, 
-            # 'dlp': DLP, 
-            # 'diffiehellman': DiffieHellman,
-            # 'diffiehellmanfixed': DiffieHellmanFixed
-            }
-    gen = gen_obj['modularmult'](params)
-    train_dataset = TrainSet(gen, max_train_size)
-    test_dataset = TestSet(gen)
-    return train_dataset, test_dataset
-
 def make_graph_dataset(params, max_train_size = 1000):
+    # What do we need to include in our Data object?
+
+    # Dont include any negative edges yet
+    # edge_label: Should be 1 all the time.
+    # edge_label_index:  Should this include the edges actually in our graph? Yeah sure. Let's just make it same as edge_index for now.
+    # edge_index: edges in our graph.
     gen = ModularMult(params)
-    test_set = set(gen.test_data)
-
-
+    # test_set = set(gen.test_data)
     edge_index = []
-    train = []
-    test = []
+    processed = [0 for _ in range(params.p)]
 
     for j in range(max_train_size):
         x = gen.gen_train_x()
+
+        if processed[x]:
+            continue
+
+        processed[x] = 1
 
         x,y = gen.get_sample(x)
 
@@ -107,12 +54,14 @@ def make_graph_dataset(params, max_train_size = 1000):
 
         edge_index.append([y,x])
 
-    print(edge_index)
     edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
     x = torch.tensor([[i] for i in range(params.p)], dtype=torch.long)
 
-    data = Data(x=x, edge_index=edge_index, edge_label_index=edge_index)
-    data.validate(raise_on_error=True) 
+    edge_label = torch.ones(edge_index[0].size(dim=0), dtype=torch.long)
+    data = Data(x=x, edge_index=edge_index, edge_label=edge_label)
+    print(data)
+    data.validate(raise_on_error=True)
+    return data
 
 def generate_negative_sample(params):
     gen = ModularMult(params)
@@ -123,3 +72,4 @@ def generate_negative_sample(params):
         b = gen.gen_train_x
 
     return torch.tensor([[a,b], [b,a]], dtype=torch.long)
+
