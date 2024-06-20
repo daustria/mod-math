@@ -57,7 +57,8 @@ if __name__ == "__main__":
     # print("Length Valid Data: %d" % (len(valid_data)))
     # print("Length Test Data: %d" % (len(test_data)))
 
-    # Neeed to make the dataset aned then pass it into the GNN module
+    # Need to make the dataset and then pass it into the GNN module
 
     data = data.make_graph_dataset(args)
     lp = LinkPred(args, data)
+    lp.compute_auc()

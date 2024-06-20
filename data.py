@@ -1,9 +1,6 @@
 import numpy as np
 import torch
-from torch.utils.data.dataset import Dataset
-from torch.utils.data import DataLoader
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
 
 class ModularMult(object):
     def __init__(self, params):
@@ -55,21 +52,10 @@ def make_graph_dataset(params, max_train_size = 1000):
         edge_index.append([y,x])
 
     edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
-    x = torch.tensor([[i] for i in range(params.p)], dtype=torch.long)
+    x = torch.tensor([[i] for i in range(params.p)], dtype=torch.float)
 
     edge_label = torch.ones(edge_index[0].size(dim=0), dtype=torch.long)
     data = Data(x=x, edge_index=edge_index, edge_label=edge_label)
     print(data)
     data.validate(raise_on_error=True)
     return data
-
-def generate_negative_sample(params):
-    gen = ModularMult(params)
-    a = gen.gen_train_x()
-    b = gen.gen_train_x
-
-    while (b * params.p) % p == a:
-        b = gen.gen_train_x
-
-    return torch.tensor([[a,b], [b,a]], dtype=torch.long)
-
