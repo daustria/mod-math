@@ -23,63 +23,28 @@ class Net(torch.nn.Module):
         return (prob_adj > 0).nonzero(as_tuple=False).t()
 
 class LinkPred():
-    def __init__(self, params, dataset):
+    def __init__(self, params):
         self.params = params
-        self.rng = np.random.RandomState(params.seed)
         self.device = torch.device('cpu')
         self.model = Net(1, 128, 64).to(self.device)
 
         # TODO : Use the user input parameters in params to set some of the parameters here, with regard to
         # things like learning rate or how we make the train/validation/test data split
+        self.optimizer = torch.optim.Adam(params=self.model.parameters(), lr=params.lr) 
 
-        self.optimizer = torch.optim.Adam(params=self.model.parameters(), lr=0.01)
         self.criterion = torch.nn.BCEWithLogitsLoss()
 
-        transform = T.RandomLinkSplit(num_val=0.05, num_test=0.1, is_undirected=True, add_negative_train_samples=False)
-
-        train_data, val_data, test_data = transform(dataset)
-        breakpoint()
+        train_data, val_data, test_data = data.make_graph_dataset(params)
         self.train_data = train_data
         self.val_data = val_data
         self.test_data = test_data
 
-
-    def generate_negative_sample(self):
-        a = self.rng.randint(self.params.p)
-        b = a
-        p = self.params.p
-        s = self.params.s
-
-        while b % p == a % p or (b % p) == (a*s % p):
-            b = self.rng.randint(p)
-
-        return a,b
-
-    # Add negative edges to the graph dataset
     def negative_sampling(self, dataset):
-        n_edges_add = dataset.edge_label_index.size(1)
+        n_edges_add = dataset.edge_index[0].size(0)
 
-        neg_edge_index = []
+        # Use seed+1 since we already used seed to generate the graph datasets
+        neg_edge_index = data.generate_negative_edges(n_edges_add, self.params, self.params.seed+1)
 
-        # Make sure we dont add the same edge twice, let's keep track of them
-        processed_edges = { i:set() for i in range(self.params.p) }
-
-        for _ in range(n_edges_add):
-            a,b = self.generate_negative_sample()
-
-            if b in processed_edges[a] or a in processed_edges[b]:
-                continue
-
-            if a == b:
-                neg_edge_index.append([a,b])
-            else:
-                neg_edge_index.append([a,b])
-                neg_edge_index.append([b,a])
-
-            processed_edges[a].add(b)
-            processed_edges[b].add(a)
-
-        neg_edge_index = torch.tensor(neg_edge_index, dtype=torch.long).t().contiguous()
         new_edge_label_index = torch.cat([dataset.edge_label_index, neg_edge_index], dim=-1)
 
         new_edge_label = torch.cat([dataset.edge_label, dataset.edge_label.new_zeros(neg_edge_index.size(1))], dim=0)
@@ -110,7 +75,7 @@ class LinkPred():
 
     def compute_auc(self):
         best_val_auc = final_test_auc = 0
-        for epoch in range(1, 101):
+        for epoch in range(1, self.params.num_epochs+1):
             loss = self.train()
             val_auc = self.test(self.val_data)
             test_auc = self.test(self.test_data)
