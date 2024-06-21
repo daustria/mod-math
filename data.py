@@ -1,3 +1,4 @@
+# Code based on https://github.com/meghabyte/mod-math
 import numpy as np
 import torch
 from torch_geometric.data import Data
@@ -11,9 +12,6 @@ class ModularMult(object):
 
     def get_sample(self, x):
         y = (x * self.params.s) % self.p
-        # x_ = write_in_base([x], self.int_len, self.base)
-        # y_ = write_in_base([y], self.int_len, self.base)
-        # return x_, y_
         return x, y
 
     def gen_train_x(self):
@@ -54,12 +52,13 @@ def generate_negative_edges(n_edges, params, seed):
     negative_edges = torch.tensor(negative_edges, dtype=torch.long).t().contiguous()
     return negative_edges
 
-def make_graph_dataset(params, max_train_size = 1000):
+def make_graph_dataset(params, edge_list_size=1000):
     gen = ModularMult(params)
-    edge_index = []
-    processed = [0 for _ in range(params.p)]
+    p = params.p
+    edge_index = [] 
+    processed = [0 for _ in range(p)]
 
-    for j in range(max_train_size):
+    for j in range(edge_list_size):
         x = gen.gen_train_x()
 
         if processed[x]:
@@ -79,8 +78,8 @@ def make_graph_dataset(params, max_train_size = 1000):
 
     n = len(edge_index)
 
+    # Double the sizes, since the edge list size is twice the number of edges (graph is undirected, includes (a,b) and (b,a))
     valid_size = 2*int(n*params.valid)
-
     test_size = 2*int(n*params.test)
 
     valid_edge_index = edge_index[:valid_size]
@@ -93,7 +92,8 @@ def make_graph_dataset(params, max_train_size = 1000):
 
     negative_edges = generate_negative_edges((valid_size+test_size) / 2, params, params.seed)
 
-    x = torch.tensor([[i] for i in range(params.p)], dtype=torch.float)
+    x = torch.tensor([[i+k*p for k in range(1, params.features+1)] for i in range(p)], dtype=torch.float)
+
     # Train data will have no negative edges in its graph, since we will add new negative edges to it every training epoch
     train_data = Data(x=x, 
                         edge_index=train_edge_index, 

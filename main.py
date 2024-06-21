@@ -22,20 +22,20 @@ def get_parser():
     parser.add_argument("--g", type=int, default=113, 
                         help="the public primitive root in dlp, diffiehellman, diffiehellmanfixed")
     parser.add_argument("--data_size", type=int, default=100, 
-                        help="the dataset size")
+                        help="the dataset size. Make sure that it is a decent amount smaller than p.")
     parser.add_argument("--valid", type=float, default=0.1, 
                         help="Portion of data to be used for validation")
     parser.add_argument("--test", type=float, default=0.2, 
                         help="Portion of data to be used for testing")
+    parser.add_argument("--features", type=int, default=3, 
+                        help="Number of features used for each equivalence class (our features are x, x+p, x+2*p,... x+n_features*p)")
 
     # Training params
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument("--num_epochs", type=int, default=100, 
                         help="number of epochs")
-    parser.add_argument("--num_layers", type=int, default=2, 
-                        help="number of layers in encoder/decoder")
-    parser.add_argument("--lr", type=float, default=0.00005, 
+    parser.add_argument("--lr", type=float, default=0.01, 
                         help="learning rate")
 
     return parser
@@ -48,11 +48,6 @@ if __name__ == "__main__":
 
     print("Prime Modulus: %d" % (args.p))
     print("Secret s: %d" % (args.s))
-    # print("Length Training Data: %d" % (len(train_data)))
-    # print("Length Valid Data: %d" % (len(valid_data)))
-    # print("Length Test Data: %d" % (len(test_data)))
-
-    # Need to make the dataset and then pass it into the GNN module
 
     lp = LinkPred(args)
     lp.compute_auc()

@@ -1,3 +1,5 @@
+# Based on http://github.com/pyg-team/pytorch_geometric/blob/master/examples/link_pred.py
+
 import torch
 from sklearn.metrics import roc_auc_score
 import torch_geometric.transforms as T
@@ -26,7 +28,7 @@ class LinkPred():
     def __init__(self, params):
         self.params = params
         self.device = torch.device('cpu')
-        self.model = Net(1, 128, 64).to(self.device)
+        self.model = Net(params.features, 128, 64).to(self.device)
 
         # TODO : Use the user input parameters in params to set some of the parameters here, with regard to
         # things like learning rate or how we make the train/validation/test data split
@@ -89,3 +91,6 @@ class LinkPred():
 
         z = self.model.encode(self.test_data.x, self.test_data.edge_index)
         final_edge_index = self.model.decode_all(z)
+        breakpoint()
+        print(final_edge_index[0][:100])
+        print(final_edge_index[1][:100])
