@@ -41,11 +41,11 @@ class LinkPred():
         self.val_data = val_data
         self.test_data = test_data
 
-    def negative_sampling(self, dataset):
+    def negative_sampling(self, dataset, epoch):
         n_edges_add = dataset.edge_index[0].size(0)
 
-        # Use seed+1 since we already used seed to generate the graph datasets
-        neg_edge_index = data.generate_negative_edges(n_edges_add, self.params, self.params.seed+1)
+        # Use seed+epoch to encourage more randomness since we already used seed to generate the graph datasets
+        neg_edge_index = data.generate_negative_edges(n_edges_add, self.params, self.params.seed+epoch)
 
         new_edge_label_index = torch.cat([dataset.edge_label_index, neg_edge_index], dim=-1)
 
@@ -53,17 +53,19 @@ class LinkPred():
 
         return new_edge_label_index, new_edge_label
 
-    def train(self):
+    def train(self, epoch):
         self.model.train()
         z = self.model.encode(self.train_data.x, self.train_data.edge_index)
 
         # These are the same as their versions in train_data but with negative edges added to them.
-        new_edge_label_index, new_edge_label = self.negative_sampling(self.train_data)
+        new_edge_label_index, new_edge_label = self.negative_sampling(self.train_data, epoch)
 
         # Now we get our model to try and classify these edges, which have
         # our old edges as well as the new ones we negative sampled.
         out = self.model.decode(z, new_edge_label_index).view(-1)
         loss = self.criterion(out, new_edge_label.float())
+
+        breakpoint()
         loss.backward()
         self.optimizer.step()
         return loss
@@ -78,7 +80,7 @@ class LinkPred():
     def compute_auc(self):
         best_val_auc = final_test_auc = 0
         for epoch in range(1, self.params.num_epochs+1):
-            loss = self.train()
+            loss = self.train(epoch)
             val_auc = self.test(self.val_data)
             test_auc = self.test(self.test_data)
             if val_auc > best_val_auc:
